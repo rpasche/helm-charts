@@ -1,4 +1,3 @@
-{{- define "tempest-base.extra_options" }}
 [DEFAULT]
 debug = True
 use_stderr = True
@@ -117,6 +116,15 @@ disk_format = vmdk
 [volume-feature-enabled]
 backup = true
 
+[load_balancer]
+admin_role = admin
+octavia_svc_username = admin
+member_role = admin
+observer_role = admin
+global_observer_role = admin
+provider = f5
+RBAC_test_type = none
+
 [service_available]
 manila = True
 neutron = True
@@ -129,5 +137,3 @@ ironic = True
 barbican = True
 keystone = True
 octavia = True
-
-{{ end }}

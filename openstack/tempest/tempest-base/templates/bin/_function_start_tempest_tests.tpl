@@ -1,9 +1,7 @@
 {{- define "tempest-base.function_start_tempest_tests" }}
 
 function start_tempest_tests {
-
   echo -e "\n === PRE-CONFIG STEP  === \n"
-
   export OS_USERNAME={{ default "neutron-tempestadmin1" (index .Values (print .Chart.Name | replace "-" "_")).tempest.admin_name | quote }}
   export OS_TENANT_NAME={{ default "neutron-tempest-admin1" (index .Values (print .Chart.Name | replace "-" "_")).tempest.admin_project_name | quote }}
   export OS_PROJECT_NAME={{ default "neutron-tempest-admin1" (index .Values (print .Chart.Name | replace "-" "_")).tempest.admin_project_name | quote }}
@@ -30,16 +28,15 @@ function start_tempest_tests {
   # check if we can reach openstack endpoints
   rally deployment check
   RALLY_EXIT_CODE=$(($RALLY_EXIT_CODE + $?))
-
   # create tempest verifier fetched from our repo
-  rally --debug verify create-verifier --type tempest --name {{ .Chart.Name }}-verifier --system-wide --source https://github.com/sapcc/tempest --version ccloud-train
+  rally --debug verify create-verifier --type tempest --name {{ .Chart.Name }}-verifier --system-wide --source https://github.com/sapcc/tempest --version {{ default "ccloud-python3" .Values.tempest_branch }}
   RALLY_EXIT_CODE=$(($RALLY_EXIT_CODE + $?))
 
   # configure tempest verifier taking into account the auth section values provided in tempest_extra_options file
   # use config file from PRE_CONFIG STEP from /tmp directory
   rally --debug verify configure-verifier --extend /tmp/tempest_extra_options
   RALLY_EXIT_CODE=$(($RALLY_EXIT_CODE + $?))
-
+  rally --debug verify configure-verifier --show
   # run the actual tempest tests for neutron
   echo -e "\n === STARTING TEMPEST TESTS FOR {{ .Chart.Name }} === \n"
   rally --debug verify start --concurrency {{ default "1" .Values.concurrency }} --detailed --pattern '{{ required "Missing run_pattern value!" .Values.run_pattern }}' --skip-list /{{ .Chart.Name }}-etc/tempest_skip_list.yaml --xfail-list /{{ .Chart.Name }}-etc/tempest_expected_failures_list.yaml
@@ -65,6 +62,8 @@ function start_tempest_tests {
 {{- define "tempest-base.function_main" }}
 
 main() {
+  set -x
+
   start_tempest_tests
   # check if rally had a problem, if not grab the failures and eventually set the exit code for tempest results
   if [[ $RALLY_EXIT_CODE -eq 0 && $(rally verify show --uuid $(rally verify list | grep "tempest" | awk '{ print $2 }') --detailed | grep -E "Failures" | awk '{ print $4 }') -gt 0 ]]; then 
